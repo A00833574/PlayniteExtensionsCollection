@@ -12,6 +12,7 @@
     <sys:String x:Key="LOCDisplayHelper_ResolutionLabel">Resolution:</sys:String>
     <sys:String x:Key="LOCDisplayHelper_RefreshRateLabel">Refresh Rate:</sys:String>
     <sys:String x:Key="LOCDisplayHelper_DisplayModesLabel">Display modes:</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_AudioDeviceLabel">Audio device:</sys:String>
     <sys:String x:Key="LOCDisplayHelper_GlobalSettingsLabel">Global settings</sys:String>
     <sys:String x:Key="LOCDisplayHelper_PlayniteModeLabel">Playnite Mode:</sys:String>
     <sys:String x:Key="LOCDisplayHelper_UseConfiguredDisplayLabel">Use configured display:</sys:String>
@@ -23,4 +24,13 @@ On the other hand, if this option is disabled, the extension will apply the conf
     <sys:String x:Key="LOCDisplayHelper_ClearSettingValueLabel">Clear</sys:String>
     <sys:String x:Key="LOCDisplayHelper_DisableOtherDisplaysLabel">Make the configured display the only enabled display (Fullscreen mode)</sys:String>
     <sys:String x:Key="LOCDisplayHelper_DisableOtherDisplaysTooltip">When running Playnite in Fullscreen Mode, temporarily disable every other monitor and only keep the configured display active while a game is running.</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_SwitchAudioDeviceLabel">Switch audio output device</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_RefreshAudioDevicesLabel">Refresh</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_AudioDeviceDefaultLabel">Default</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_AudioDeviceUnknownLabel">Unknown device</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_MainMenuSelectAudioDeviceLabel">Select audio output</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_SelectAudioDeviceDialogTitle">Select audio output device</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_SelectAudioDeviceNoDevicesMessage">No playback devices were found.</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_SelectAudioDeviceSwitchFailedMessage">Failed to change audio output device.</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_SelectAudioDeviceSwitchedMessage">Audio output switched to {0}.</sys:String>
 </ResourceDictionary>

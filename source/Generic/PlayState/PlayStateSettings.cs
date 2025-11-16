@@ -100,6 +100,8 @@ namespace PlayState
         public bool SwitchToDesktopModeOnControllerStatus { get => switchToDesktopModeOnControllerStatus; set => SetValue(ref switchToDesktopModeOnControllerStatus, value); }
         private bool switchToFullscreenModeOnControllerStatus = false;
         public bool SwitchToFullscreenModeOnControllerStatus { get => switchToFullscreenModeOnControllerStatus; set => SetValue(ref switchToFullscreenModeOnControllerStatus, value); }
+        private bool guideButtonTriplePressSwitchToFullscreen = false;
+        public bool GuideButtonTriplePressSwitchToFullscreen { get => guideButtonTriplePressSwitchToFullscreen; set => SetValue(ref guideButtonTriplePressSwitchToFullscreen, value); }
         private bool switchModesOnlyIfNoRunningGames = true;
         public bool SwitchModesOnlyIfNoRunningGames { get => switchModesOnlyIfNoRunningGames; set => SetValue(ref switchModesOnlyIfNoRunningGames, value); }
         private int switchModeIgnoreCtrlStateOnStartupSeconds = 20;

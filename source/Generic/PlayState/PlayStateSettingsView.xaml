@@ -130,6 +130,9 @@
                                   IsChecked="{Binding Settings.SwitchToDesktopModeOnControllerStatus}" Margin="0,0,0,10"/>
                     <CheckBox Content="{DynamicResource LOCPlayState_SettingFsModeSwitchOnControlConnect}"
                                   IsChecked="{Binding Settings.SwitchToFullscreenModeOnControllerStatus}" Margin="0,0,0,10"/>
+                    <CheckBox Content="{DynamicResource LOCPlayState_SettingGuideTriplePressToFullscreen}"
+                              ToolTip="{DynamicResource LOCPlayState_SettingGuideTriplePressToFullscreenTooltip}"
+                              IsChecked="{Binding Settings.GuideButtonTriplePressSwitchToFullscreen}" Margin="20,0,0,10"/>
                     <CheckBox Content="{DynamicResource LOCPlayState_SettingSwitchModeOnlyIfNoGamesRunning}"
                                   IsChecked="{Binding Settings.SwitchModesOnlyIfNoRunningGames}" Margin="20,0,0,10"/>
                     <StackPanel Margin="20,0,0,10">

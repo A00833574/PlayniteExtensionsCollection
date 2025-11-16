@@ -4,6 +4,7 @@ using Playnite.SDK.Models;
 using Playnite.SDK.Plugins;
 using PlayniteUtilitiesCommon;
 using DisplayHelper.Models;
+using DisplayHelper.Audio;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,6 +51,24 @@ namespace DisplayHelper
             return gameMenuItems;
         }
 
+        public override IEnumerable<MainMenuItem> GetMainMenuItems(GetMainMenuItemsArgs args)
+        {
+            if (!args.IsFullscreen)
+            {
+                return Enumerable.Empty<MainMenuItem>();
+            }
+
+            return new List<MainMenuItem>
+            {
+                new MainMenuItem
+                {
+                    Description = ResourceProvider.GetString("LOCDisplayHelper_MainMenuSelectAudioDeviceLabel"),
+                    MenuSection = "@Settings|Audio",
+                    Action = _ => ShowFullscreenAudioDevicePicker()
+                }
+            };
+        }
+
         public override void OnGameStarting(OnGameStartingEventArgs args)
         {
             ApplyDisplayGameStartConfiguration(args);
@@ -84,7 +103,7 @@ namespace DisplayHelper
                 return;
             }
 
-            GetDisplaySettingsNewValues(game, out int newWidth, out int newHeight, out int newRefreshRate, out string targetDisplayName, out bool disableOtherDisplays);
+            GetDisplaySettingsNewValues(game, out int newWidth, out int newHeight, out int newRefreshRate, out string targetDisplayName, out bool disableOtherDisplays, out string targetAudioDeviceId);
             var changeDisplaySettings = (newWidth != 0 && newHeight != 0) || newRefreshRate != 0;
             var availableDisplays = DisplayUtilities.GetAvailableDisplayDevices();
             var currentPrimaryDisplayName = DisplayUtilities.GetPrimaryScreenName(availableDisplays);
@@ -104,7 +123,8 @@ namespace DisplayHelper
             var setAsPrimaryDisplay = currentPrimaryDisplayName != targetDisplayName &&
                                       !targetDisplay.StateFlags.HasFlag(DisplayDeviceStateFlags.PrimaryDevice);
             disableOtherDisplays = disableOtherDisplays && availableDisplays.Count > 1;
-            if (changeDisplaySettings || setAsPrimaryDisplay || disableOtherDisplays)
+            var changeAudioDevice = !targetAudioDeviceId.IsNullOrEmpty();
+            if (changeDisplaySettings || setAsPrimaryDisplay || disableOtherDisplays || changeAudioDevice)
             {
                 // If the screen configuration was changed before, restore it before changing it again
                 if (!RestoreDisplayData())
@@ -112,11 +132,11 @@ namespace DisplayHelper
                     return;
                 }
 
-                ApplyGameStartDisplayConfiguration(newWidth, newHeight, newRefreshRate, targetDisplayName, currentPrimaryDisplayName, setAsPrimaryDisplay, disableOtherDisplays);
+                ApplyGameStartDisplayConfiguration(newWidth, newHeight, newRefreshRate, targetDisplayName, currentPrimaryDisplayName, setAsPrimaryDisplay, disableOtherDisplays, changeAudioDevice, targetAudioDeviceId);
             }
         }
 
-        private void ApplyGameStartDisplayConfiguration(int newWidth, int newHeight, int newRefreshRate, string targetDisplayName, string currentPrimaryDisplayName, bool setAsPrimaryDisplay, bool disableOtherDisplays)
+        private void ApplyGameStartDisplayConfiguration(int newWidth, int newHeight, int newRefreshRate, string targetDisplayName, string currentPrimaryDisplayName, bool setAsPrimaryDisplay, bool disableOtherDisplays, bool changeAudioDevice, string targetAudioDeviceId)
         {
             var targetDisplayCurrentDevMode = DisplayUtilities.GetScreenDevMode(targetDisplayName);
             var restoreResolution = newWidth != 0 && newHeight != 0;
@@ -141,22 +161,38 @@ namespace DisplayHelper
                 }
             }
 
-            if (!changeDisplayConfiguration && (disabledDisplaysData?.Any() != true))
+            var originalAudioDeviceId = string.Empty;
+            var audioDeviceChanged = false;
+            if (changeAudioDevice)
+            {
+                originalAudioDeviceId = AudioUtilities.GetDefaultAudioDeviceId();
+                if (!originalAudioDeviceId.IsNullOrEmpty() && !originalAudioDeviceId.Equals(targetAudioDeviceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    audioDeviceChanged = AudioUtilities.SetDefaultAudioPlaybackDevice(targetAudioDeviceId);
+                    if (!audioDeviceChanged)
+                    {
+                        logger.Warn($"Failed to change default audio device to \"{targetAudioDeviceId}\"");
+                    }
+                }
+            }
+
+            if (!changeDisplayConfiguration && (disabledDisplaysData?.Any() != true) && !audioDeviceChanged)
             {
                 return;
             }
 
-            displayRestoreData = new DisplayConfigChangeData(targetDisplayCurrentDevMode, targetDisplayName, currentPrimaryDisplayName, restoreResolution, restoreRefreshRate, disabledDisplaysData);
-            logger.Info($"Stored restore display data. Screen: {currentPrimaryDisplayName}. Resolution {displayRestoreData.DevMode.dmPelsWidth}x{displayRestoreData.DevMode.dmPelsHeight}. Frequency: {displayRestoreData.DevMode.dmDisplayFrequency}. Disabled displays count: {displayRestoreData.DisabledDisplays.Count}");
+            displayRestoreData = new DisplayConfigChangeData(targetDisplayCurrentDevMode, targetDisplayName, currentPrimaryDisplayName, restoreResolution, restoreRefreshRate, disabledDisplaysData, audioDeviceChanged ? originalAudioDeviceId : null);
+            logger.Info($"Stored restore display data. Screen: {currentPrimaryDisplayName}. Resolution {displayRestoreData.DevMode.dmPelsWidth}x{displayRestoreData.DevMode.dmPelsHeight}. Frequency: {displayRestoreData.DevMode.dmDisplayFrequency}. Disabled displays count: {displayRestoreData.DisabledDisplays.Count}. Restore audio: {displayRestoreData.RestoreAudioDevice}");
         }
 
-        private void GetDisplaySettingsNewValues(Game game, out int newWidth, out int newHeight, out int newRefreshRate, out string targetDisplayName, out bool disableOtherDisplays)
+        private void GetDisplaySettingsNewValues(Game game, out int newWidth, out int newHeight, out int newRefreshRate, out string targetDisplayName, out bool disableOtherDisplays, out string targetAudioDeviceId)
         {
             newWidth = 0;
             newHeight = 0;
             newRefreshRate = 0;
             targetDisplayName = string.Empty;
             disableOtherDisplays = false;
+            targetAudioDeviceId = string.Empty;
 
             if (game.Features.HasItems())
             {
@@ -231,6 +267,11 @@ namespace DisplayHelper
             {
                 disableOtherDisplays = true;
             }
+
+            if (modeDisplayInfo.ChangeAudioDevice && !modeDisplayInfo.AudioDeviceId.IsNullOrEmpty())
+            {
+                targetAudioDeviceId = modeDisplayInfo.AudioDeviceId;
+            }
         }
 
         private void RestoreDisplayData(OnGameStoppedEventArgs args)
@@ -259,9 +300,18 @@ namespace DisplayHelper
                 return true;
             }
 
-            var displayRestoreSuccess = DisplayUtilities.RestoreDisplayConfiguration(displayRestoreData);
+            var restoreData = displayRestoreData;
+            var displayRestoreSuccess = DisplayUtilities.RestoreDisplayConfiguration(restoreData);
             if (displayRestoreSuccess)
             {
+                if (restoreData.RestoreAudioDevice && !restoreData.OriginalAudioDeviceId.IsNullOrEmpty())
+                {
+                    if (!AudioUtilities.SetDefaultAudioPlaybackDevice(restoreData.OriginalAudioDeviceId))
+                    {
+                        logger.Warn($"Failed to restore audio device to {restoreData.OriginalAudioDeviceId}");
+                    }
+                }
+
                 displayRestoreData = null;
                 return true;
             }
@@ -269,6 +319,60 @@ namespace DisplayHelper
             {
                 return false;
             }
+        }
+
+        private void ShowFullscreenAudioDevicePicker()
+        {
+            var availableDevices = AudioUtilities.GetPlaybackDevices();
+            if (!availableDevices.HasItems())
+            {
+                PlayniteApi.Dialogs.ShowMessage(ResourceProvider.GetString("LOCDisplayHelper_SelectAudioDeviceNoDevicesMessage"));
+                return;
+            }
+
+            var deviceOptions = CreateAudioDeviceOptions(availableDevices);
+            var selectedItem = PlayniteApi.Dialogs.ChooseItemWithSearch(
+                deviceOptions,
+                searchTerm => FilterAudioDeviceOptions(availableDevices, searchTerm),
+                string.Empty,
+                ResourceProvider.GetString("LOCDisplayHelper_SelectAudioDeviceDialogTitle"));
+
+            if (selectedItem is null)
+            {
+                return;
+            }
+
+            var switchSuccess = AudioUtilities.SetDefaultAudioPlaybackDevice(selectedItem.Description);
+            if (!switchSuccess)
+            {
+                PlayniteApi.Dialogs.ShowMessage(ResourceProvider.GetString("LOCDisplayHelper_SelectAudioDeviceSwitchFailedMessage"));
+                return;
+            }
+
+            if (displayRestoreData?.RestoreAudioDevice == true)
+            {
+                displayRestoreData.OverrideAudioDeviceRestore(selectedItem.Description);
+            }
+
+            PlayniteApi.Notifications.Add(new NotificationMessage(
+                Guid.NewGuid().ToString(),
+                string.Format(ResourceProvider.GetString("LOCDisplayHelper_SelectAudioDeviceSwitchedMessage"), selectedItem.Name),
+                NotificationType.Info));
+        }
+
+        private List<GenericItemOption> FilterAudioDeviceOptions(List<AudioDeviceInfo> devices, string searchTerm)
+        {
+            if (searchTerm.IsNullOrEmpty())
+            {
+                return CreateAudioDeviceOptions(devices);
+            }
+
+            return CreateAudioDeviceOptions(devices.Where(d => d.DisplayName.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0));
+        }
+
+        private List<GenericItemOption> CreateAudioDeviceOptions(IEnumerable<AudioDeviceInfo> devices)
+        {
+            return devices.Select(d => new GenericItemOption(d.DisplayName, d.Id)).ToList();
         }
 
         private void CreateGameMenuItems()

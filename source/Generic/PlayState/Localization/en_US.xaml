@@ -143,4 +143,6 @@ If disabled, only the first controller will be allowed to activate the hotkeys</
     <sys:String x:Key="LOCPlayState_ControllerHotkeyModeGameRunningLabel">Game running</sys:String>
     <sys:String x:Key="LOCPlayState_ControllerHotkeyModeGameNotRunningLabel">Game not running</sys:String>
     <sys:String x:Key="LOCPlayState_ControllerHotkeyModeAlwaysLabel">Always</sys:String>
+    <sys:String x:Key="LOCPlayState_SettingGuideTriplePressToFullscreen">Launch Fullscreen Mode when the Xbox button is pressed three times quickly</sys:String>
+    <sys:String x:Key="LOCPlayState_SettingGuideTriplePressToFullscreenTooltip">Desktop Mode only. Quickly tap the Xbox/Guide button three times to start Playnite&apos;s Fullscreen Mode without touching the keyboard or mouse.</sys:String>
 </ResourceDictionary>

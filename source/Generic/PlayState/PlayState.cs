@@ -144,6 +144,27 @@ namespace PlayState
             }
         }
 
+        internal bool TryHandleGuideTriplePressSwitch()
+        {
+            if (!Settings.Settings.GuideButtonTriplePressSwitchToFullscreen)
+            {
+                return false;
+            }
+
+            if ((_isAnyGameRunning && Settings.Settings.SwitchModesOnlyIfNoRunningGames) || switchPlayniteModeStarted)
+            {
+                return false;
+            }
+
+            if (PlayniteApi.ApplicationInfo.Mode != ApplicationMode.Desktop)
+            {
+                return false;
+            }
+
+            PerformModeSwitch("Playnite.FullscreenApp.exe", "LOCPlayState_SwitchingToFullscreenModeMessage");
+            return true;
+        }
+
         public override Control GetGameViewControl(GetGameViewControlArgs args)
         {
             if (args.Name == "GameStateSwitchControl")

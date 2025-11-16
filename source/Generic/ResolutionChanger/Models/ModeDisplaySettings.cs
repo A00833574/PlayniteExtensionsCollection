@@ -28,5 +28,14 @@ namespace DisplayHelper.Models
 
         private bool disableOtherDisplays = false;
         public bool DisableOtherDisplays { get => disableOtherDisplays; set => SetValue(ref disableOtherDisplays, value); }
+
+        private bool changeAudioDevice = false;
+        public bool ChangeAudioDevice { get => changeAudioDevice; set => SetValue(ref changeAudioDevice, value); }
+
+        private string audioDeviceId = string.Empty;
+        public string AudioDeviceId { get => audioDeviceId; set => SetValue(ref audioDeviceId, value); }
+
+        private string audioDeviceName = string.Empty;
+        public string AudioDeviceName { get => audioDeviceName; set => SetValue(ref audioDeviceName, value); }
     }
 }

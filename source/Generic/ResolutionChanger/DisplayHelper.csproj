@@ -95,7 +95,9 @@
     <Compile Include="..\..\common\pluginscommon\ProcessStarter.cs">
       <Link>Shared\PluginsCommon\ProcessStarter.cs</Link>
     </Compile>
+    <Compile Include="AudioUtilities.cs" />
     <Compile Include="DisplayUtilities.cs" />
+    <Compile Include="Models\AudioDeviceInfo.cs" />
     <Compile Include="Models\DisplayConfigChangeData.cs" />
     <Compile Include="Models\DisplayInfo.cs" />
     <Compile Include="Models\ModeDisplaySettings.cs" />

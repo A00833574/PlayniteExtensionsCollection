@@ -17,8 +17,10 @@ namespace DisplayHelper.Models
         public bool RestorePrimaryDisplay => TargetDisplayName != PrimaryDisplayName;
         public readonly List<DisabledDisplayData> DisabledDisplays;
         public bool HasDisabledDisplays => DisabledDisplays?.Any() == true;
+        public string OriginalAudioDeviceId { get; private set; }
+        public bool RestoreAudioDevice => !OriginalAudioDeviceId.IsNullOrEmpty();
 
-        public DisplayConfigChangeData(DEVMODE devMode, string targetDisplayName, string primaryDisplayName, bool restoreResolutionValues, bool restoreRefreshRate, List<DisabledDisplayData> disabledDisplays = null)
+        public DisplayConfigChangeData(DEVMODE devMode, string targetDisplayName, string primaryDisplayName, bool restoreResolutionValues, bool restoreRefreshRate, List<DisabledDisplayData> disabledDisplays = null, string originalAudioDeviceId = "")
         {
             DevMode = devMode;
             TargetDisplayName = targetDisplayName;
@@ -26,6 +28,18 @@ namespace DisplayHelper.Models
             RestoreResolutionValues = restoreResolutionValues;
             RestoreRefreshRate = restoreRefreshRate;
             DisabledDisplays = disabledDisplays?.ToList() ?? new List<DisabledDisplayData>();
+            OriginalAudioDeviceId = originalAudioDeviceId;
+        }
+
+        public void OverrideAudioDeviceRestore(string deviceId)
+        {
+            if (deviceId.IsNullOrEmpty())
+            {
+                OriginalAudioDeviceId = string.Empty;
+                return;
+            }
+
+            OriginalAudioDeviceId = deviceId;
         }
     }
 }

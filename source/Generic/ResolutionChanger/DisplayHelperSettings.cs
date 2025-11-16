@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DisplayHelper.Audio;
 
 namespace DisplayHelper
 {
@@ -48,6 +49,7 @@ namespace DisplayHelper
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedGlobalSettings));
                 OnPropertyChanged(nameof(IsFullscreenModeSelected));
+                UpdateSelectedAudioDeviceFromSettings();
             }
         }
 
@@ -66,6 +68,16 @@ namespace DisplayHelper
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedDisplayModes));
             }
+        }
+
+        private List<AudioDeviceInfo> availableAudioDevices = new List<AudioDeviceInfo>();
+        public List<AudioDeviceInfo> AvailableAudioDevices { get => availableAudioDevices; set => SetValue(ref availableAudioDevices, value); }
+
+        private AudioDeviceInfo selectedAudioDevice = null;
+        public AudioDeviceInfo SelectedAudioDevice
+        {
+            get => selectedAudioDevice;
+            set => SetValue(ref selectedAudioDevice, value);
         }
 
         public List<DisplayMode> SelectedDisplayModes
@@ -141,6 +153,7 @@ namespace DisplayHelper
             AvailableDisplays = DisplayUtilities.GetAvailableDisplaysInfo();
             SelectedDisplay = AvailableDisplays.FirstOrDefault();
             SelectedPlayniteMode = PlayniteModes.FirstOrDefault();
+            RefreshAudioDevices();
         }
 
         public void CancelEdit()
@@ -187,6 +200,42 @@ namespace DisplayHelper
                 {
                     SelectedGlobalSettings.TargetDisplayName = string.Empty;
                 }
+            });
+        }
+
+        public RelayCommand RefreshAudioDevicesCommand
+        {
+            get => new RelayCommand(() =>
+            {
+                RefreshAudioDevices();
+            });
+        }
+
+        public RelayCommand SetAudioDeviceCommand
+        {
+            get => new RelayCommand(() =>
+            {
+                if (SelectedGlobalSettings is null || SelectedAudioDevice is null)
+                {
+                    return;
+                }
+
+                SelectedGlobalSettings.AudioDeviceId = SelectedAudioDevice.Id;
+                SelectedGlobalSettings.AudioDeviceName = SelectedAudioDevice.Name;
+            });
+        }
+
+        public RelayCommand ClearAudioDeviceCommand
+        {
+            get => new RelayCommand(() =>
+            {
+                if (SelectedGlobalSettings is null)
+                {
+                    return;
+                }
+
+                SelectedGlobalSettings.AudioDeviceId = string.Empty;
+                SelectedGlobalSettings.AudioDeviceName = string.Empty;
             });
         }
 
@@ -242,6 +291,30 @@ namespace DisplayHelper
 
                 SelectedGlobalSettings.RefreshRate = null;
             });
+        }
+
+        private void RefreshAudioDevices()
+        {
+            AvailableAudioDevices = AudioUtilities.GetPlaybackDevices();
+            UpdateSelectedAudioDeviceFromSettings();
+        }
+
+        private void UpdateSelectedAudioDeviceFromSettings()
+        {
+            if (AvailableAudioDevices?.Any() != true || SelectedGlobalSettings is null)
+            {
+                SelectedAudioDevice = AvailableAudioDevices?.FirstOrDefault();
+                return;
+            }
+
+            if (SelectedGlobalSettings.AudioDeviceId.IsNullOrEmpty())
+            {
+                SelectedAudioDevice = AvailableAudioDevices.FirstOrDefault();
+            }
+            else
+            {
+                SelectedAudioDevice = AvailableAudioDevices.FirstOrDefault(a => a.Id == SelectedGlobalSettings.AudioDeviceId) ?? AvailableAudioDevices.FirstOrDefault();
+            }
         }
     }
 }

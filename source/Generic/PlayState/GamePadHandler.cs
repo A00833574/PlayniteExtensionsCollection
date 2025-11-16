@@ -19,6 +19,9 @@ namespace PlayState
         private readonly Timer _controllersStateCheckTimer;
         private bool _isCheckRunning;
         private const int _pollingRate = 80;
+        private readonly Dictionary<PlayerIndex, GuideButtonTapState> _guideButtonTapStates;
+        private static readonly TimeSpan guideButtonTapMaxInterval = TimeSpan.FromMilliseconds(700);
+        private static readonly TimeSpan guideButtonTapIdleResetInterval = TimeSpan.FromMilliseconds(2000);
 
         public GamePadHandler(PlayState playState, PlayStateSettings settings, PlayStateManagerViewModel playStateManager)
         {
@@ -26,6 +29,9 @@ namespace PlayState
             _settings = settings;
             _playStateManager = playStateManager;
             _controllersStateCheckTimer = new Timer(OnControllerTimerElapsed, null, 0, _pollingRate);
+            _guideButtonTapStates = Enum.GetValues(typeof(PlayerIndex))
+                .Cast<PlayerIndex>()
+                .ToDictionary(index => index, _ => new GuideButtonTapState());
         }
 
         public bool IsAnyControllerConnected()
@@ -45,7 +51,12 @@ namespace PlayState
 
         private async void OnControllerTimerElapsed(object state)
         {
-            if (_isCheckRunning || !_settings.EnableControllersHotkeys)
+            if (_isCheckRunning)
+            {
+                return;
+            }
+
+            if (!_settings.EnableControllersHotkeys && !_settings.GuideButtonTriplePressSwitchToFullscreen)
             {
                 return;
             }
@@ -72,6 +83,12 @@ namespace PlayState
 
                 if (!gamePadState.IsConnected || !gamePadState.IsAnyButtonOrDpadPressed)
                 {
+                    continue;
+                }
+
+                if (HandleGuideButtonTriplePress(gamePadState, playerIndex))
+                {
+                    anySignalSent = true;
                     continue;
                 }
 
@@ -154,6 +171,70 @@ namespace PlayState
         private bool IsValidGamePadHotkeyMode(GamePadToKeyboardHotkeyModes mode, GamePadToKeyboardHotkeyModes targetMode)
         {
             return mode == GamePadToKeyboardHotkeyModes.Always || mode == targetMode;
+        }
+
+        private bool HandleGuideButtonTriplePress(GamePadState gamePadState, PlayerIndex playerIndex)
+        {
+            if (!_settings.GuideButtonTriplePressSwitchToFullscreen)
+            {
+                return false;
+            }
+
+            if (!_guideButtonTapStates.TryGetValue(playerIndex, out var tracker))
+            {
+                return false;
+            }
+
+            var now = DateTime.UtcNow;
+            var guidePressed = gamePadState.Buttons.Guide == ButtonState.Pressed;
+            if (guidePressed)
+            {
+                if (!tracker.WasPressed)
+                {
+                    if ((now - tracker.LastPressTime) <= guideButtonTapMaxInterval)
+                    {
+                        tracker.TapCount += 1;
+                    }
+                    else
+                    {
+                        tracker.TapCount = 1;
+                    }
+
+                    tracker.LastPressTime = now;
+                    if (tracker.TapCount >= 3)
+                    {
+                        tracker.Reset();
+                        return _playState.TryHandleGuideTriplePressSwitch();
+                    }
+                }
+
+                tracker.WasPressed = true;
+            }
+            else
+            {
+                if (tracker.WasPressed && (now - tracker.LastPressTime) > guideButtonTapIdleResetInterval)
+                {
+                    tracker.Reset();
+                }
+
+                tracker.WasPressed = false;
+            }
+
+            return false;
+        }
+
+        private class GuideButtonTapState
+        {
+            public int TapCount { get; set; }
+            public DateTime LastPressTime { get; set; } = DateTime.MinValue;
+            public bool WasPressed { get; set; }
+
+            public void Reset()
+            {
+                TapCount = 0;
+                LastPressTime = DateTime.MinValue;
+                WasPressed = false;
+            }
         }
     }
 }
