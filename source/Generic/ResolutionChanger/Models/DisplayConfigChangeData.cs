@@ -15,14 +15,17 @@ namespace DisplayHelper.Models
         public readonly bool RestoreResolutionValues;
         public readonly bool RestoreRefreshRate;
         public bool RestorePrimaryDisplay => TargetDisplayName != PrimaryDisplayName;
+        public readonly List<DisabledDisplayData> DisabledDisplays;
+        public bool HasDisabledDisplays => DisabledDisplays?.Any() == true;
 
-        public DisplayConfigChangeData(DEVMODE devMode, string targetDisplayName, string primaryDisplayName, bool restoreResolutionValues, bool restoreRefreshRate)
+        public DisplayConfigChangeData(DEVMODE devMode, string targetDisplayName, string primaryDisplayName, bool restoreResolutionValues, bool restoreRefreshRate, List<DisabledDisplayData> disabledDisplays = null)
         {
             DevMode = devMode;
             TargetDisplayName = targetDisplayName;
             PrimaryDisplayName = primaryDisplayName;
             RestoreResolutionValues = restoreResolutionValues;
             RestoreRefreshRate = restoreRefreshRate;
+            DisabledDisplays = disabledDisplays?.ToList() ?? new List<DisabledDisplayData>();
         }
     }
 }

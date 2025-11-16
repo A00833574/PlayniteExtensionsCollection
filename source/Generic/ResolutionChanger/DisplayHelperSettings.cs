@@ -47,8 +47,11 @@ namespace DisplayHelper
                 selectedPlayniteMode = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedGlobalSettings));
+                OnPropertyChanged(nameof(IsFullscreenModeSelected));
             }
         }
+
+        public bool IsFullscreenModeSelected => SelectedPlayniteMode.Value == ApplicationMode.Fullscreen;
 
         private List<DisplayInfo> availableDisplays = new List<DisplayInfo>();
         public List<DisplayInfo> AvailableDisplays { get => availableDisplays; set => SetValue(ref availableDisplays, value); }

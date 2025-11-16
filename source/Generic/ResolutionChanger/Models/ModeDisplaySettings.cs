@@ -25,5 +25,8 @@ namespace DisplayHelper.Models
 
         private int? refreshRate = null;
         public int? RefreshRate { get => refreshRate; set => SetValue(ref refreshRate, value); }
+
+        private bool disableOtherDisplays = false;
+        public bool DisableOtherDisplays { get => disableOtherDisplays; set => SetValue(ref disableOtherDisplays, value); }
     }
 }

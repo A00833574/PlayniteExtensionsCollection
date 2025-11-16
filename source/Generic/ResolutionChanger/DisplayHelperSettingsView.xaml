@@ -6,6 +6,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
              d:DesignHeight="400" d:DesignWidth="600">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
     <ScrollViewer Margin="20">
         <StackPanel>
             <TextBlock VerticalAlignment="Center" Margin="0,0,0,20">
@@ -71,6 +74,12 @@
                     <TextBlock Text="{DynamicResource LOCDisplayHelper_DisplayLabel}" VerticalAlignment="Center" Margin="0,0,5,0" />
                     <TextBox IsReadOnly="True" Text="{Binding SelectedGlobalSettings.TargetDisplayName}" MinWidth="250" />
                 </StackPanel>
+                <CheckBox Margin="20,10,0,0"
+                          Visibility="{Binding IsFullscreenModeSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                          IsEnabled="{Binding ElementName=cbTargetDisplay, Path=IsChecked}"
+                          Content="{DynamicResource LOCDisplayHelper_DisableOtherDisplaysLabel}"
+                          ToolTip="{DynamicResource LOCDisplayHelper_DisableOtherDisplaysTooltip}"
+                          IsChecked="{Binding SelectedGlobalSettings.DisableOtherDisplays}" />
 
                 <CheckBox x:Name="cbResolution" VerticalAlignment="Center" Content="Change resolution"
                     Margin="0,15,0,0"

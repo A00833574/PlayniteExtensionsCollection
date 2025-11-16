@@ -84,10 +84,10 @@ namespace DisplayHelper
                 return;
             }
 
-            GetDisplaySettingsNewValues(game, out int newWidth, out int newHeight, out int newRefreshRate, out string targetDisplayName);
+            GetDisplaySettingsNewValues(game, out int newWidth, out int newHeight, out int newRefreshRate, out string targetDisplayName, out bool disableOtherDisplays);
             var changeDisplaySettings = (newWidth != 0 && newHeight != 0) || newRefreshRate != 0;
             var availableDisplays = DisplayUtilities.GetAvailableDisplayDevices();
-            var currentPrimaryDisplayName = DisplayUtilities.GetPrimaryScreenName();
+            var currentPrimaryDisplayName = DisplayUtilities.GetPrimaryScreenName(availableDisplays);
             if (targetDisplayName.IsNullOrEmpty())
             {
                 targetDisplayName = currentPrimaryDisplayName; // If no specific display device has been specified, make changes to current primary display
@@ -103,7 +103,8 @@ namespace DisplayHelper
 
             var setAsPrimaryDisplay = currentPrimaryDisplayName != targetDisplayName &&
                                       !targetDisplay.StateFlags.HasFlag(DisplayDeviceStateFlags.PrimaryDevice);
-            if (changeDisplaySettings || setAsPrimaryDisplay)
+            disableOtherDisplays = disableOtherDisplays && availableDisplays.Count > 1;
+            if (changeDisplaySettings || setAsPrimaryDisplay || disableOtherDisplays)
             {
                 // If the screen configuration was changed before, restore it before changing it again
                 if (!RestoreDisplayData())
@@ -111,30 +112,51 @@ namespace DisplayHelper
                     return;
                 }
 
-                ApplyGameStartDisplayConfiguration(newWidth, newHeight, newRefreshRate, targetDisplayName, currentPrimaryDisplayName, setAsPrimaryDisplay);
+                ApplyGameStartDisplayConfiguration(newWidth, newHeight, newRefreshRate, targetDisplayName, currentPrimaryDisplayName, setAsPrimaryDisplay, disableOtherDisplays);
             }
         }
 
-        private void ApplyGameStartDisplayConfiguration(int newWidth, int newHeight, int newRefreshRate, string targetDisplayName, string currentPrimaryDisplayName, bool setAsPrimaryDisplay)
+        private void ApplyGameStartDisplayConfiguration(int newWidth, int newHeight, int newRefreshRate, string targetDisplayName, string currentPrimaryDisplayName, bool setAsPrimaryDisplay, bool disableOtherDisplays)
         {
             var targetDisplayCurrentDevMode = DisplayUtilities.GetScreenDevMode(targetDisplayName);
-            var displayChangeSuccess = DisplayUtilities.ChangeDisplayConfiguration(targetDisplayName, newWidth, newHeight, newRefreshRate, setAsPrimaryDisplay);
-            if (displayChangeSuccess)
+            var restoreResolution = newWidth != 0 && newHeight != 0;
+            var restoreRefreshRate = newRefreshRate != 0;
+            var changeDisplayConfiguration = restoreResolution || restoreRefreshRate || setAsPrimaryDisplay;
+            if (changeDisplayConfiguration)
             {
-                var restoreResolution = newWidth != 0 && newHeight != 0;
-                var restoreRefreshRate = newRefreshRate != 0;
-
-                displayRestoreData = new DisplayConfigChangeData(targetDisplayCurrentDevMode, targetDisplayName, currentPrimaryDisplayName, restoreResolution, restoreRefreshRate);
-                logger.Info($"Stored restore display data. Screen: {currentPrimaryDisplayName}. Resolution {displayRestoreData.DevMode.dmPelsWidth}x{displayRestoreData.DevMode.dmPelsHeight}. Frequency: {displayRestoreData.DevMode.dmDisplayFrequency}");
+                var displayChangeSuccess = DisplayUtilities.ChangeDisplayConfiguration(targetDisplayName, newWidth, newHeight, newRefreshRate, setAsPrimaryDisplay);
+                if (!displayChangeSuccess)
+                {
+                    return;
+                }
             }
+
+            List<DisabledDisplayData> disabledDisplaysData = null;
+            if (disableOtherDisplays)
+            {
+                disabledDisplaysData = DisplayUtilities.DisableOtherDisplays(targetDisplayName);
+                if (disabledDisplaysData is null)
+                {
+                    logger.Warn($"Failed to disable other displays for \"{targetDisplayName}\".");
+                }
+            }
+
+            if (!changeDisplayConfiguration && (disabledDisplaysData?.Any() != true))
+            {
+                return;
+            }
+
+            displayRestoreData = new DisplayConfigChangeData(targetDisplayCurrentDevMode, targetDisplayName, currentPrimaryDisplayName, restoreResolution, restoreRefreshRate, disabledDisplaysData);
+            logger.Info($"Stored restore display data. Screen: {currentPrimaryDisplayName}. Resolution {displayRestoreData.DevMode.dmPelsWidth}x{displayRestoreData.DevMode.dmPelsHeight}. Frequency: {displayRestoreData.DevMode.dmDisplayFrequency}. Disabled displays count: {displayRestoreData.DisabledDisplays.Count}");
         }
 
-        private void GetDisplaySettingsNewValues(Game game, out int newWidth, out int newHeight, out int newRefreshRate, out string targetDisplayName)
+        private void GetDisplaySettingsNewValues(Game game, out int newWidth, out int newHeight, out int newRefreshRate, out string targetDisplayName, out bool disableOtherDisplays)
         {
             newWidth = 0;
             newHeight = 0;
             newRefreshRate = 0;
             targetDisplayName = string.Empty;
+            disableOtherDisplays = false;
 
             if (game.Features.HasItems())
             {
@@ -178,8 +200,9 @@ namespace DisplayHelper
                 }
             }
 
-            var modeDisplayInfo = PlayniteApi.ApplicationInfo.Mode == ApplicationMode.Desktop ?
-                      settings.Settings.DesktopModeDisplayInfo : settings.Settings.FullscreenModeDisplayInfo;
+            var isFullscreenMode = PlayniteApi.ApplicationInfo.Mode == ApplicationMode.Fullscreen;
+            var modeDisplayInfo = isFullscreenMode ?
+                      settings.Settings.FullscreenModeDisplayInfo : settings.Settings.DesktopModeDisplayInfo;
             if (modeDisplayInfo is null)
             {
                 return;
@@ -202,6 +225,11 @@ namespace DisplayHelper
                 && modeDisplayInfo.TargetSpecificDisplay && !modeDisplayInfo.TargetDisplayName.IsNullOrEmpty())
             {
                 targetDisplayName = modeDisplayInfo.TargetDisplayName;
+            }
+
+            if (isFullscreenMode && modeDisplayInfo.DisableOtherDisplays && !targetDisplayName.IsNullOrEmpty())
+            {
+                disableOtherDisplays = true;
             }
         }
 

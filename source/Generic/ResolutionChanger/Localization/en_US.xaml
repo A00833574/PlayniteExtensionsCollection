@@ -21,4 +21,6 @@ Additionally, if the selected display isn't already the primary screen, it will 
 On the other hand, if this option is disabled, the extension will apply the configured settings to the current primary display at the moment a game is launched.</sys:String>
     <sys:String x:Key="LOCDisplayHelper_SetSettingValueLabel">Set</sys:String>
     <sys:String x:Key="LOCDisplayHelper_ClearSettingValueLabel">Clear</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_DisableOtherDisplaysLabel">Make the configured display the only enabled display (Fullscreen mode)</sys:String>
+    <sys:String x:Key="LOCDisplayHelper_DisableOtherDisplaysTooltip">When running Playnite in Fullscreen Mode, temporarily disable every other monitor and only keep the configured display active while a game is running.</sys:String>
 </ResourceDictionary>

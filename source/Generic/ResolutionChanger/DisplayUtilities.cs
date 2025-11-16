@@ -196,6 +196,14 @@ namespace DisplayHelper
 
         public static bool RestoreDisplayConfiguration(DisplayConfigChangeData displayRestoreData)
         {
+            if (displayRestoreData.HasDisabledDisplays)
+            {
+                if (!RestoreDisabledDisplays(displayRestoreData.DisabledDisplays))
+                {
+                    return false;
+                }
+            }
+
             var restoreResolution = displayRestoreData.RestoreResolutionValues;
             var restoreRefreshRate = displayRestoreData.RestoreRefreshRate;
             var restorePrimaryDisplay = displayRestoreData.RestorePrimaryDisplay;
@@ -220,6 +228,87 @@ namespace DisplayHelper
             }
 
             return ChangeDisplaySettings(displayRestoreData.TargetDisplayName, newWidth, newHeight, newFrequency, true) == DISP_CHANGE.Successful;
+        }
+
+        public static List<DisabledDisplayData> DisableOtherDisplays(string targetDisplayName)
+        {
+            var availableDisplays = GetAvailableDisplayDevices();
+            if (availableDisplays.Count <= 1)
+            {
+                return new List<DisabledDisplayData>();
+            }
+
+            var disabledDisplays = new List<DisabledDisplayData>();
+            var disableFlags = ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY | ChangeDisplaySettingsFlags.CDS_NORESET;
+
+            foreach (var displayDevice in availableDisplays)
+            {
+                if (displayDevice.DeviceName.Equals(targetDisplayName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var devMode = GetScreenDevMode(displayDevice.DeviceName);
+                var disableResult = User32.ChangeDisplaySettingsEx(displayDevice.DeviceName, IntPtr.Zero, IntPtr.Zero, disableFlags, IntPtr.Zero);
+                if (disableResult == DISP_CHANGE.Successful)
+                {
+                    disabledDisplays.Add(new DisabledDisplayData(displayDevice.DeviceName, devMode));
+                }
+                else
+                {
+                    logger.Warn($"Failed to disable display \"{displayDevice.DeviceName}\". Result: {disableResult}");
+                    RestoreDisabledDisplays(disabledDisplays);
+                    return null;
+                }
+            }
+
+            if (disabledDisplays.Any())
+            {
+                var saveResult = SaveDisplaySettings();
+                if (saveResult != DISP_CHANGE.Successful)
+                {
+                    logger.Warn($"Failed to apply display disable changes. Result: {saveResult}");
+                    RestoreDisabledDisplays(disabledDisplays);
+                    return null;
+                }
+            }
+
+            return disabledDisplays;
+        }
+
+        private static bool RestoreDisabledDisplays(List<DisabledDisplayData> disabledDisplays)
+        {
+            if (disabledDisplays?.Any() != true)
+            {
+                return true;
+            }
+
+            var restoreFlags = ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY | ChangeDisplaySettingsFlags.CDS_NORESET;
+            var success = true;
+            foreach (var disabledDisplay in disabledDisplays)
+            {
+                var restoreDevMode = disabledDisplay.DevMode;
+                var restoreResult = User32.ChangeDisplaySettingsEx(disabledDisplay.DisplayName, ref restoreDevMode, IntPtr.Zero, restoreFlags, IntPtr.Zero);
+                if (restoreResult != DISP_CHANGE.Successful)
+                {
+                    logger.Warn($"Failed to restore disabled display \"{disabledDisplay.DisplayName}\". Result: {restoreResult}");
+                    success = false;
+                }
+            }
+
+            if (!success)
+            {
+                return false;
+            }
+
+            var saveResult = SaveDisplaySettings();
+            if (saveResult != DISP_CHANGE.Successful)
+            {
+                logger.Warn($"Failed to apply display restore changes. Result: {saveResult}");
+                return false;
+            }
+
+            return true;
         }
 
         public static List<DEVMODE> GetMainScreenAvailableDevModes()
